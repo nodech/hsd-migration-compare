@@ -77,6 +77,13 @@ const getPendingNew = getPaginatedAll.bind(null, nwclient, nwclient.getPending);
   }
 }
 
+// check sorted by time.
+{
+  // Check unconfirmed separately.
+  for (const [wallet, account] of walletsAndAccounts)
+    await compareTimeUnconfirmed(wallet, account, 0);
+}
+
 // Check time queries are the same.
 async function comparePending(wallet, account = null) {
   const pendingsOld = await owclient.getPending(wallet, account);
@@ -123,6 +130,70 @@ async function compareLast(wallet, account = null, n = 100) {
 
   assert.strictEqual(lastOld.length, lastNewSlice.length);
   assert.deepStrictEqual(hashesOld, hashesNew);
+}
+
+async function compareTimeUnconfirmed(wallet, account = null, startTime = 0) {
+  // old API does not differentiate between confirmed and unconfirmed.
+  // so we need to get all transactions and filter them.
+  const rangeOld = await owclient.getRange(wallet, account, {
+    start: startTime,
+  });
+
+  const filteredOld = rangeOld.filter(tx => tx.height === -1);
+
+  const pendingTime = await getPendingNew(wallet, {
+    account,
+    time: startTime
+  });
+
+  assert.strictEqual(filteredOld.length, pendingTime.length);
+  assert.deepStrictEqual(
+    filteredOld.map(tx => tx.hash),
+    pendingTime.map(tx => tx.hash)
+  );
+
+  // grab mid point and do it again
+  const timeMid = pendingTime[Math.floor(pendingTime.length / 2)].mtime;
+
+  const rangeOldAfterMid = await owclient.getRange(wallet, account, {
+    start: timeMid
+  });
+
+  const filteredOldAfterMid = rangeOldAfterMid.filter(tx => tx.height === -1);
+
+  const pendingTimeAfterMid = await getPendingNew(wallet, {
+    account,
+    time: timeMid
+  });
+
+  assert.strictEqual(filteredOldAfterMid.length, pendingTimeAfterMid.length);
+  assert.deepStrictEqual(
+    filteredOldAfterMid.map(tx => tx.hash),
+    pendingTimeAfterMid.map(tx => tx.hash)
+  );
+
+  // Check after mid reverse. Old API Does not truly reverse. It just reverses
+  // the result, so instead we need to pass start/end in reverse order.
+  const rangeOldAfterMidReverse = await owclient.getRange(wallet, account, {
+    end: timeMid,
+    reverse: true
+  });
+
+  const filteredOldAfterMidReverse = rangeOldAfterMidReverse.filter(tx => tx.height === -1);
+
+  const pendingTimeAfterMidReverse = await getPendingNew(wallet, {
+    account,
+    time: timeMid,
+    reverse: true
+  });
+
+  assert.strictEqual(filteredOldAfterMidReverse.length,
+    pendingTimeAfterMidReverse.length);
+
+  assert.deepStrictEqual(
+    filteredOldAfterMidReverse.map(tx => tx.hash),
+    pendingTimeAfterMidReverse.map(tx => tx.hash)
+  );
 }
 
 /**
