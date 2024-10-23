@@ -1,0 +1,16 @@
+{
+  "name": "test-indexing",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hs-client": "^6.0.0",
+    "hsd": "github:nodech/hsd#wallet-pagination"
+  }
+}
